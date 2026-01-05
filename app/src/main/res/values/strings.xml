@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">ClassMate</string>
+    <string name="login_title">התחברות</string>
+    <string name="username_hint">שם משתמש</string>
+    <string name="password_hint">סיסמה</string>
+    <string name="login_button_text">התחבר</string>
+    <string name="create_account_text">אין לך חשבון? צור חשבון חדש</string>
+    <string name="app_logo_description">לוגו האפליקציה</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="nav_header_subtitle">info@classmate.com</string>
+    <string name="welcome_user">שלום: %1$s</string>
 </resources>
