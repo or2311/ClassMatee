@@ -253,23 +253,27 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
         final TextInputEditText passwordInput = dialogView.findViewById(R.id.student_password_input);
 
         AlertDialog dialog = builder.create();
-        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "הוסף", (d, which) -> {
-            String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
-            String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
-            String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "הוסף", (DialogInterface.OnClickListener) null);
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "ביטול", (DialogInterface.OnClickListener) null);
+        dialog.setOnShowListener(dlg -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
+                String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
+                String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
 
-            if (fullName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
-                Toast.makeText(CalendarActivity.this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (password.length() < 6) {
-                Toast.makeText(CalendarActivity.this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
-                return;
-            }
+                if (fullName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
+                    Toast.makeText(CalendarActivity.this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (password.length() < 6) {
+                    Toast.makeText(CalendarActivity.this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
-            addStudentToClass(fullName, emailStr, password);
+                addStudentToClass(fullName, emailStr, password);
+                dialog.dismiss();
+            });
         });
-        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "ביטול", (d, which) -> {});
         dialog.show();
     }
 
