@@ -1,10 +1,7 @@
 package com.example.classmate;
 
-import android.content.Intent;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -16,15 +13,15 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.bumptech.glide.Glide;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class UploadSummery extends AppCompatActivity {
 
@@ -32,6 +29,7 @@ public class UploadSummery extends AppCompatActivity {
     private ImageView previewImage;
     private ProgressBar progressBar;
     private FirebaseFirestore db;
+    private FirebaseStorage storage;
     private String email = "";
     private String className = "";
     private Uri selectedImageUri = null;
@@ -41,7 +39,7 @@ public class UploadSummery extends AppCompatActivity {
                 if (uri != null) {
                     selectedImageUri = uri;
                     previewImage.setVisibility(View.VISIBLE);
-                    previewImage.setImageURI(uri);
+                    Glide.with(this).load(uri).into(previewImage);
                 }
             });
 
@@ -53,6 +51,7 @@ public class UploadSummery extends AppCompatActivity {
         email = getIntent().getStringExtra("EMAIL");
         className = getIntent().getStringExtra("CLASS_NAME");
         db = FirebaseFirestore.getInstance();
+        storage = FirebaseStorage.getInstance();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -88,14 +87,33 @@ public class UploadSummery extends AppCompatActivity {
         }
 
         progressBar.setVisibility(View.VISIBLE);
+        findViewById(R.id.upload_button).setEnabled(false);
 
-        // שמירת התמונה לאחסון מקומי
-        String savedPath = saveImageLocally(selectedImageUri, title);
+        // העלאה ל-Firebase Storage
+        String fileName = "summaries/" + className + "/" + UUID.randomUUID() + ".jpg";
+        StorageReference storageRef = storage.getReference().child(fileName);
 
+        storageRef.putFile(selectedImageUri)
+                .addOnSuccessListener(taskSnapshot ->
+                        storageRef.getDownloadUrl().addOnSuccessListener(downloadUri -> {
+                            saveToFirestore(title, course, downloadUri.toString());
+                        }))
+                .addOnFailureListener(e -> {
+                    progressBar.setVisibility(View.GONE);
+                    findViewById(R.id.upload_button).setEnabled(true);
+                    Toast.makeText(this, "שגיאה בהעלאת התמונה: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                })
+                .addOnProgressListener(snapshot -> {
+                    double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+                    progressBar.setProgress((int) progress);
+                });
+    }
+
+    private void saveToFirestore(String title, String course, String imageUrl) {
         Map<String, Object> data = new HashMap<>();
         data.put("title", title);
         data.put("course", course);
-        data.put("filePath", savedPath != null ? savedPath : "");
+        data.put("imageUrl", imageUrl);
         data.put("uploaderEmail", email != null ? email : "");
         data.put("className", className != null ? className : "");
         data.put("timestamp", System.currentTimeMillis());
@@ -103,32 +121,14 @@ public class UploadSummery extends AppCompatActivity {
         db.collection("summaries").add(data)
                 .addOnSuccessListener(ref -> {
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "הסיכום הועלה בהצלחה", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "הסיכום הועלה בהצלחה!", Toast.LENGTH_SHORT).show();
                     finish();
                 })
                 .addOnFailureListener(e -> {
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "שגיאה בהעלאה: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    findViewById(R.id.upload_button).setEnabled(true);
+                    Toast.makeText(this, "שגיאה בשמירת הנתונים: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
-    }
-
-    private String saveImageLocally(Uri uri, String name) {
-        try {
-            File dir = new File(getFilesDir(), "summaries");
-            if (!dir.exists()) dir.mkdirs();
-            File outFile = new File(dir, name.replaceAll("[^a-zA-Z0-9א-ת_]", "_") + "_" + System.currentTimeMillis() + ".jpg");
-            InputStream in = getContentResolver().openInputStream(uri);
-            if (in == null) return null;
-            Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(in);
-            in.close();
-            FileOutputStream out = new FileOutputStream(outFile);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out);
-            out.flush();
-            out.close();
-            return outFile.getAbsolutePath();
-        } catch (IOException e) {
-            return null;
-        }
     }
 
     private String getText(TextInputEditText edit) {
