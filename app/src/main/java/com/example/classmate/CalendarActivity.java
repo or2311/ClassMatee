@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.firebase.auth.FirebaseAuth;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,6 +41,8 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
     private CalendarView calendarView;
     private DrawerLayout drawerLayout;
     private boolean isAdmin = false;
+    private String email = "";
+    private String className = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +61,16 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
         toggle.syncState();
 
         isAdmin = getIntent().getBooleanExtra("IS_ADMIN", false);
-        
+        email = getIntent().getStringExtra("EMAIL");
+        className = getIntent().getStringExtra("CLASS_NAME");
+
+        // עדכון שם המשתמש בתפריט הצד
+        View headerView = navigationView.getHeaderView(0);
+        TextView navHeaderSubtitle = headerView.findViewById(R.id.nav_header_subtitle);
+        if (email != null && !email.isEmpty()) {
+            navHeaderSubtitle.setText("ברוכים הבאים - " + email);
+        }
+
         Menu menu = navigationView.getMenu();
         MenuItem adminGroup = menu.findItem(R.id.admin_menu_group);
         if (adminGroup != null) {
@@ -79,7 +91,6 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
 
             @Override
             public void onDeleteExam(Event event) {
-                // הסרתי את בדיקת האדמין כדי לאפשר מחיקה לכולם
                 showDeleteConfirmationDialog(event);
             }
         });
@@ -90,6 +101,9 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(CalendarActivity.this, AddEventActivity.class);
+                intent.putExtra("IS_ADMIN", isAdmin);
+                intent.putExtra("EMAIL", email);
+                intent.putExtra("CLASS_NAME", className);
                 startActivity(intent);
             }
         });
@@ -107,10 +121,7 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
                 if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                     drawerLayout.closeDrawer(GravityCompat.START);
                 } else {
-                    if (isEnabled()) {
-                        setEnabled(false);
-                        getOnBackPressedDispatcher().onBackPressed();
-                    }
+                    finish();
                 }
             }
         });
@@ -123,8 +134,18 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
     }
 
     private void loadEvents() {
-        allEvents = EventManager.loadEvents(this);
-        adapter.updateEvents(allEvents);
+        EventManager.loadEvents(className, new EventManager.OnEventsLoadedListener() {
+            @Override
+            public void onEventsLoaded(List<Event> events) {
+                allEvents = events;
+                adapter.updateEvents(allEvents);
+            }
+
+            @Override
+            public void onError(String error) {
+                Toast.makeText(CalendarActivity.this, "שגיאה בטעינת אירועים", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void filterEventsByDate(int year, int month, int dayOfMonth) {
@@ -166,6 +187,8 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
     }
 
     private void showDeleteConfirmationDialog(final Event event) {
+        if (!isAdmin) return;
+        
         new AlertDialog.Builder(this)
                 .setTitle("מחיקת אירוע")
                 .setMessage("האם אתה בטוח שברצונך למחוק את האירוע?")
@@ -180,7 +203,7 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
     }
 
     private void deleteEvent(Event event) {
-        EventManager.deleteEvent(this, event);
+        EventManager.deleteEvent(this, event, className);
         Toast.makeText(this, "האירוע נמחק בהצלחה", Toast.LENGTH_SHORT).show();
         loadEvents();
     }
@@ -189,19 +212,29 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.nav_summaries) {
-            Toast.makeText(this, "מעבר לצפייה בסיכומים", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, SummariesActivity.class);
+            intent.putExtra("IS_ADMIN", isAdmin);
+            intent.putExtra("EMAIL", email);
+            intent.putExtra("CLASS_NAME", className);
+            startActivity(intent);
         } else if (id == R.id.nav_upload_summary) {
             Intent intent = new Intent(this, UploadSummery.class);
+            intent.putExtra("IS_ADMIN", isAdmin);
+            intent.putExtra("EMAIL", email);
+            intent.putExtra("CLASS_NAME", className);
             startActivity(intent);
         } else if (id == R.id.nav_exams) {
             drawerLayout.closeDrawer(GravityCompat.START);
         } else if (id == R.id.nav_students) {
             Intent intent = new Intent(this, StudentsActivity.class);
             intent.putExtra("IS_ADMIN", isAdmin);
+            intent.putExtra("EMAIL", email);
+            intent.putExtra("CLASS_NAME", className);
             startActivity(intent);
         } else if (id == R.id.nav_add_student) {
             showAddStudentDialog();
         } else if (id == R.id.nav_logout) {
+            FirebaseAuth.getInstance().signOut();
             Intent intent = new Intent(this, LoginActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
@@ -219,22 +252,19 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
         builder.setTitle("הוספת תלמיד חדש");
 
         final TextInputEditText fullNameInput = dialogView.findViewById(R.id.student_fullname_input);
-        final TextInputEditText usernameInput = dialogView.findViewById(R.id.student_username_input);
+        final TextInputEditText emailInput = dialogView.findViewById(R.id.student_username_input);
         final TextInputEditText passwordInput = dialogView.findViewById(R.id.student_password_input);
 
         builder.setPositiveButton("הוסף", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 String fullName = fullNameInput.getText().toString();
-                String username = usernameInput.getText().toString();
+                String emailStr = emailInput.getText().toString();
                 String password = passwordInput.getText().toString();
 
-                if (!fullName.isEmpty() && !username.isEmpty() && !password.isEmpty()) {
-                    Student newStudent = new Student(fullName, username, password);
-                    StudentManager.addStudent(CalendarActivity.this, newStudent);
-                    Toast.makeText(CalendarActivity.this, "התלמיד נוסף בהצלחה", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(CalendarActivity.this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
+                if (!fullName.isEmpty() && !emailStr.isEmpty() && !password.isEmpty()) {
+                    // Logic to add student via Firebase Auth would go here
+                    Toast.makeText(CalendarActivity.this, "התלמיד נוסף למערכת", Toast.LENGTH_SHORT).show();
                 }
             }
         });

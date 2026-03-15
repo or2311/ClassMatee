@@ -45,22 +45,55 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/login_icon" />
 
+            <TextView
+                android:id="@+id/role_selection_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/select_role"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/login_title" />
+
+            <RadioGroup
+                android:id="@+id/role_radio_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintTop_toBottomOf="@id/role_selection_title">
+                
+                <RadioButton
+                    android:id="@+id/radio_student"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:checked="true"
+                    android:text="@string/role_student" />
+
+                <RadioButton
+                    android:id="@+id/radio_admin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/role_admin" />
+            </RadioGroup>
+
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/username_layout"
+                android:id="@+id/email_layout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="16dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/login_title">
+                app:layout_constraintTop_toBottomOf="@id/role_radio_group">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/username_edit_text"
+                    android:id="@+id/email_edit_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/username_hint"
-                    android:inputType="text" />
+                    android:hint="@string/email_hint"
+                    android:inputType="textEmailAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -72,7 +105,7 @@
                 app:passwordToggleEnabled="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/username_layout">
+                app:layout_constraintTop_toBottomOf="@id/email_layout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/password_edit_text"
@@ -101,11 +134,21 @@
                 android:layout_marginTop="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:text="@string/create_account_text"
+                android:text="@string/create_class_text"
                 android:textColor="?attr/colorPrimary"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/login_button" />
+
+            <ProgressBar
+                android:id="@+id/login_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>

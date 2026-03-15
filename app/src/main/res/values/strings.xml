@@ -1,14 +1,25 @@
 <resources>
     <string name="app_name">ClassMate</string>
     <string name="login_title">התחברות</string>
-    <string name="username_hint">שם משתמש</string>
+    <string name="email_hint">אימייל</string>
     <string name="password_hint">סיסמה</string>
     <string name="login_button_text">התחבר</string>
-    <string name="create_account_text">אין לך חשבון? צור חשבון חדש</string>
+    <string name="create_class_text">אין לך כיתה? צור כיתה חדשה</string>
     <string name="app_logo_description">לוגו האפליקציה</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_desc">Navigation header</string>
     <string name="nav_header_subtitle">info@classmate.com</string>
     <string name="welcome_user">שלום: %1$s</string>
+    
+    <string name="register_title">יצירת כיתה חדשה</string>
+    <string name="admin_name_hint">שם המנהל/ת</string>
+    <string name="class_name_hint">שם הכיתה</string>
+    <string name="confirm_password_hint">אימות סיסמה</string>
+    <string name="register_button_text">צור כיתה</string>
+    <string name="back_to_login">כבר יש לך כיתה? התחבר כאן</string>
+
+    <string name="role_admin">מנהל</string>
+    <string name="role_student">תלמיד</string>
+    <string name="select_role">בחר סוג התחברות:</string>
 </resources>
