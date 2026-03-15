@@ -72,10 +72,7 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
         }
 
         Menu menu = navigationView.getMenu();
-        MenuItem adminGroup = menu.findItem(R.id.admin_menu_group);
-        if (adminGroup != null) {
-            adminGroup.setVisible(isAdmin);
-        }
+        menu.setGroupVisible(R.id.admin_menu_group, isAdmin);
 
         calendarView = findViewById(R.id.full_calendar_view);
         examsRecyclerView = findViewById(R.id.exams_list_recycler_view);
@@ -255,21 +252,64 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
         final TextInputEditText emailInput = dialogView.findViewById(R.id.student_username_input);
         final TextInputEditText passwordInput = dialogView.findViewById(R.id.student_password_input);
 
-        builder.setPositiveButton("הוסף", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String fullName = fullNameInput.getText().toString();
-                String emailStr = emailInput.getText().toString();
-                String password = passwordInput.getText().toString();
+        AlertDialog dialog = builder.create();
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "הוסף", (d, which) -> {
+            String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
+            String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
+            String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
 
-                if (!fullName.isEmpty() && !emailStr.isEmpty() && !password.isEmpty()) {
-                    // Logic to add student via Firebase Auth would go here
-                    Toast.makeText(CalendarActivity.this, "התלמיד נוסף למערכת", Toast.LENGTH_SHORT).show();
-                }
+            if (fullName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
+                Toast.makeText(CalendarActivity.this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
+                return;
             }
-        });
+            if (password.length() < 6) {
+                Toast.makeText(CalendarActivity.this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        builder.setNegativeButton("ביטול", null);
-        builder.create().show();
+            addStudentToClass(fullName, emailStr, password);
+        });
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "ביטול", (d, which) -> {});
+        dialog.show();
+    }
+
+    private void addStudentToClass(String fullName, String studentEmail, String password) {
+        // יצירת משתמש חדש ב-Firebase Auth דרך instance משני (כדי לא לנתק את המנהל)
+        com.google.firebase.FirebaseOptions options = com.google.firebase.FirebaseApp.getInstance().getOptions();
+        com.google.firebase.FirebaseApp secondaryApp;
+        try {
+            secondaryApp = com.google.firebase.FirebaseApp.getInstance("studentCreation");
+        } catch (IllegalStateException e) {
+            secondaryApp = com.google.firebase.FirebaseApp.initializeApp(this, options, "studentCreation");
+        }
+
+        final com.google.firebase.FirebaseApp finalSecondaryApp = secondaryApp;
+        com.google.firebase.auth.FirebaseAuth secondaryAuth = com.google.firebase.auth.FirebaseAuth.getInstance(finalSecondaryApp);
+
+        secondaryAuth.createUserWithEmailAndPassword(studentEmail, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().getUser() != null) {
+                        String uid = task.getResult().getUser().getUid();
+                        java.util.Map<String, Object> userData = new java.util.HashMap<>();
+                        userData.put("fullName", fullName);
+                        userData.put("email", studentEmail);
+                        userData.put("className", className);
+                        userData.put("isAdmin", false);
+
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                .collection("users").document(uid).set(userData)
+                                .addOnSuccessListener(aVoid -> {
+                                    secondaryAuth.signOut();
+                                    Toast.makeText(CalendarActivity.this, "התלמיד נוסף בהצלחה", Toast.LENGTH_SHORT).show();
+                                })
+                                .addOnFailureListener(e -> {
+                                    secondaryAuth.signOut();
+                                    Toast.makeText(CalendarActivity.this, "שגיאה בשמירת פרטי התלמיד: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+                    } else {
+                        String err = task.getException() != null ? task.getException().getMessage() : "שגיאה";
+                        Toast.makeText(CalendarActivity.this, "שגיאה ביצירת חשבון: " + err, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

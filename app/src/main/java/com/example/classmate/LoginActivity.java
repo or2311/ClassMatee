@@ -10,13 +10,9 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -54,10 +50,9 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void handleLogin() {
-        String email = emailEditText.getText().toString().trim();
-        String password = passwordEditText.getText().toString().trim();
-        int selectedId = roleRadioGroup.getCheckedRadioButtonId();
-        
+        String email = emailEditText.getText() != null ? emailEditText.getText().toString().trim() : "";
+        String password = passwordEditText.getText() != null ? passwordEditText.getText().toString().trim() : "";
+
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "נא למלא אימייל וסיסמה", Toast.LENGTH_SHORT).show();
             return;
@@ -68,59 +63,98 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        // בדיקה שנבחר תפקיד
+        int selectedId = roleRadioGroup.getCheckedRadioButtonId();
+        if (selectedId == -1) {
+            Toast.makeText(this, "נא לבחור סוג התחברות (תלמיד / מנהל)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean wantsToBeAdmin = (selectedId == R.id.radio_admin);
+
         progressBar.setVisibility(View.VISIBLE);
 
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // אם הצלחנו להתחבר, נבדוק את התפקיד ב-Firestore
-                        checkUserInFirestore(email, selectedId == R.id.radio_admin);
+                        checkUserInFirestore(email, wantsToBeAdmin);
                     } else {
                         progressBar.setVisibility(View.GONE);
-                        Toast.makeText(LoginActivity.this, "התחברות נכשלה: " + (task.getException() != null ? task.getException().getMessage() : "שגיאה לא ידועה"),
-                                Toast.LENGTH_LONG).show();
+                        String errMsg = task.getException() != null ? task.getException().getMessage() : "שגיאה לא ידועה";
+                        Toast.makeText(LoginActivity.this, "התחברות נכשלה: " + errMsg, Toast.LENGTH_LONG).show();
                     }
                 });
     }
 
     private void checkUserInFirestore(String email, boolean wantsToBeAdmin) {
         if (mAuth.getCurrentUser() == null) return;
-        
+
         String userId = mAuth.getCurrentUser().getUid();
+
+        // קודם כל מנסים לחפש לפי UID (הדרך המועדפת)
         db.collection("users").document(userId).get()
                 .addOnCompleteListener(task -> {
                     progressBar.setVisibility(View.GONE);
                     if (task.isSuccessful()) {
                         DocumentSnapshot document = task.getResult();
                         if (document != null && document.exists()) {
-                            Boolean isAdminInDb = document.getBoolean("isAdmin");
-                            String className = document.getString("className");
-                            
-                            if (isAdminInDb == null) isAdminInDb = false;
-
-                            // בדיקה אם המשתמש מנסה להיכנס בתפקיד שלא שייך לו
-                            if (isAdminInDb != wantsToBeAdmin) {
-                                String msg = isAdminInDb ? "חשבון זה שייך למנהל. נא לבחור התחברות כמנהל." : "חשבון זה שייך לתלמיד. נא לבחור התחברות כתלמיד.";
-                                Toast.makeText(LoginActivity.this, msg, Toast.LENGTH_LONG).show();
-                                mAuth.signOut();
-                                return;
-                            }
-
-                            // הכל תקין - מעבר למסך הבית
-                            Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
-                            intent.putExtra("EMAIL", email);
-                            intent.putExtra("IS_ADMIN", isAdminInDb);
-                            intent.putExtra("CLASS_NAME", className);
-                            startActivity(intent);
-                            finish();
+                            // נמצא לפי UID
+                            processUserDocument(document, email, wantsToBeAdmin);
                         } else {
-                            mAuth.signOut();
-                            Toast.makeText(LoginActivity.this, "לא נמצאו נתוני משתמש ב-Database", Toast.LENGTH_LONG).show();
+                            // *** תיקון הבאג העיקרי ***
+                            // המסמך לא נמצא לפי UID – מנסים לחפש לפי אימייל
+                            // (קורה כשהמסמך נוצר עם ID שאינו ה-UID)
+                            searchUserByEmail(email, wantsToBeAdmin);
                         }
                     } else {
                         mAuth.signOut();
-                        Toast.makeText(LoginActivity.this, "שגיאה בשליפת נתונים: " + (task.getException() != null ? task.getException().getMessage() : ""), Toast.LENGTH_SHORT).show();
+                        String errMsg = task.getException() != null ? task.getException().getMessage() : "";
+                        Toast.makeText(LoginActivity.this, "שגיאה בשליפת נתונים: " + errMsg, Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    // חיפוש גיבוי לפי שדה האימייל
+    private void searchUserByEmail(String email, boolean wantsToBeAdmin) {
+        progressBar.setVisibility(View.VISIBLE);
+        db.collection("users")
+                .whereEqualTo("email", email)
+                .limit(1)
+                .get()
+                .addOnCompleteListener(task -> {
+                    progressBar.setVisibility(View.GONE);
+                    if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
+                        DocumentSnapshot document = task.getResult().getDocuments().get(0);
+                        processUserDocument(document, email, wantsToBeAdmin);
+                    } else {
+                        mAuth.signOut();
+                        Toast.makeText(LoginActivity.this, "לא נמצאו נתוני משתמש ב-Database", Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private void processUserDocument(DocumentSnapshot document, String email, boolean wantsToBeAdmin) {
+        Boolean isAdminInDb = document.getBoolean("isAdmin");
+        String className = document.getString("className");
+
+        if (isAdminInDb == null) isAdminInDb = false;
+
+        // בדיקה אם התפקיד הנבחר תואם לתפקיד בבסיס הנתונים
+        if (!isAdminInDb.equals(wantsToBeAdmin)) {
+            String msg = isAdminInDb
+                    ? "חשבון זה שייך למנהל. נא לבחור התחברות כמנהל."
+                    : "חשבון זה שייך לתלמיד. נא לבחור התחברות כתלמיד.";
+            Toast.makeText(LoginActivity.this, msg, Toast.LENGTH_LONG).show();
+            mAuth.signOut();
+            return;
+        }
+
+        // הכל תקין – מעבר למסך הבית
+        Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
+        intent.putExtra("EMAIL", email);
+        intent.putExtra("IS_ADMIN", isAdminInDb);
+        intent.putExtra("CLASS_NAME", className);
+        startActivity(intent);
+        finish();
     }
 }

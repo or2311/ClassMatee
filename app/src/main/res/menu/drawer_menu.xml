@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_summaries"
+        android:icon="@drawable/ic_lock_outline"
+        android:title="סיכומים" />
+
+    <item
+        android:id="@+id/nav_exams"
+        android:icon="@drawable/ic_badge"
+        android:title="לוח מבחנים" />
+
+    <item
+        android:id="@+id/nav_students"
+        android:icon="@drawable/ic_student_avatar"
+        android:title="תלמידים" />
+
+    <!-- פריטים לניהול – גלויים רק למנהל -->
+    <group android:id="@+id/admin_menu_group">
+        <item
+            android:id="@+id/nav_upload_summary"
+            android:icon="@drawable/ic_upload"
+            android:title="העלאת סיכום" />
+
+        <item
+            android:id="@+id/nav_add_student"
+            android:icon="@drawable/ic_person_outline"
+            android:title="הוספת תלמיד" />
+    </group>
+
+    <item
+        android:id="@+id/nav_logout"
+        android:icon="@drawable/ic_lock_outline"
+        android:title="התנתקות" />
+
+</menu>

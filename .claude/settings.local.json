@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(git -C \"D:\\\\ClassMatee\" log --all --oneline)",
+      "Bash(git -C \"D:\\\\ClassMatee\" log --all -p)",
+      "Bash(git -C \"D:\\\\ClassMatee\" status)",
+      "Bash(git -C \"D:\\\\ClassMatee\" show 16a1b33:app/src/main/java/com/example/classmate/LoginActivity.java)",
+      "Bash(git -C:*)",
+      "Bash(git checkout:*)",
+      "Bash(xargs ls:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}
