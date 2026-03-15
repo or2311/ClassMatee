@@ -1,7 +1,9 @@
 package com.example.classmate;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -11,12 +13,15 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.textfield.TextInputEditText;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.navigation.NavigationView;
@@ -160,6 +165,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             intent = new Intent(this, CalendarActivity.class);
         } else if (id == R.id.nav_students) {
             intent = new Intent(this, StudentsActivity.class);
+        } else if (id == R.id.nav_add_student) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            showAddStudentDialog();
+            return true;
         } else if (id == R.id.nav_logout) {
             FirebaseAuth.getInstance().signOut();
             intent = new Intent(this, LoginActivity.class);
@@ -175,5 +184,81 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private void showAddStudentDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_student, null);
+        TextInputEditText fullNameInput = dialogView.findViewById(R.id.student_fullname_input);
+        TextInputEditText emailInput = dialogView.findViewById(R.id.student_username_input);
+        TextInputEditText passwordInput = dialogView.findViewById(R.id.student_password_input);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("הוספת תלמיד חדש")
+                .setView(dialogView)
+                .create();
+
+        dialog.setButton(AlertDialog.BUTTON_POSITIVE, "הוסף", (DialogInterface.OnClickListener) null);
+        dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "ביטול", (DialogInterface.OnClickListener) null);
+
+        dialog.setOnShowListener(dlg -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
+                String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
+                String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
+
+                if (fullName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
+                    Toast.makeText(this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (password.length() < 6) {
+                    Toast.makeText(this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                addStudentToClass(fullName, emailStr, password, dialog);
+            });
+        });
+
+        dialog.show();
+    }
+
+    private void addStudentToClass(String fullName, String studentEmail, String password, AlertDialog dialog) {
+        com.google.firebase.FirebaseOptions options = com.google.firebase.FirebaseApp.getInstance().getOptions();
+        com.google.firebase.FirebaseApp secondaryApp;
+        try {
+            secondaryApp = com.google.firebase.FirebaseApp.getInstance("studentCreationHome");
+        } catch (IllegalStateException e) {
+            secondaryApp = com.google.firebase.FirebaseApp.initializeApp(this, options, "studentCreationHome");
+        }
+
+        final com.google.firebase.FirebaseApp finalSecondaryApp = secondaryApp;
+        com.google.firebase.auth.FirebaseAuth secondaryAuth =
+                com.google.firebase.auth.FirebaseAuth.getInstance(finalSecondaryApp);
+
+        secondaryAuth.createUserWithEmailAndPassword(studentEmail, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult().getUser() != null) {
+                        String uid = task.getResult().getUser().getUid();
+                        java.util.Map<String, Object> userData = new java.util.HashMap<>();
+                        userData.put("fullName", fullName);
+                        userData.put("email", studentEmail);
+                        userData.put("className", className);
+                        userData.put("isAdmin", false);
+
+                        db.collection("users").document(uid).set(userData)
+                                .addOnSuccessListener(aVoid -> {
+                                    secondaryAuth.signOut();
+                                    dialog.dismiss();
+                                    Toast.makeText(this, "התלמיד נוסף בהצלחה", Toast.LENGTH_SHORT).show();
+                                    refreshStudentsData();
+                                })
+                                .addOnFailureListener(e -> {
+                                    secondaryAuth.signOut();
+                                    Toast.makeText(this, "שגיאה בשמירת פרטי התלמיד: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+                    } else {
+                        String err = task.getException() != null ? task.getException().getMessage() : "שגיאה";
+                        Toast.makeText(this, "שגיאה ביצירת חשבון: " + err, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

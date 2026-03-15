@@ -270,14 +270,13 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
                     return;
                 }
 
-                addStudentToClass(fullName, emailStr, password);
-                dialog.dismiss();
+                addStudentToClass(fullName, emailStr, password, dialog);
             });
         });
         dialog.show();
     }
 
-    private void addStudentToClass(String fullName, String studentEmail, String password) {
+    private void addStudentToClass(String fullName, String studentEmail, String password, AlertDialog dialog) {
         // יצירת משתמש חדש ב-Firebase Auth דרך instance משני (כדי לא לנתק את המנהל)
         com.google.firebase.FirebaseOptions options = com.google.firebase.FirebaseApp.getInstance().getOptions();
         com.google.firebase.FirebaseApp secondaryApp;
@@ -304,6 +303,7 @@ public class CalendarActivity extends AppCompatActivity implements NavigationVie
                                 .collection("users").document(uid).set(userData)
                                 .addOnSuccessListener(aVoid -> {
                                     secondaryAuth.signOut();
+                                    dialog.dismiss();
                                     Toast.makeText(CalendarActivity.this, "התלמיד נוסף בהצלחה", Toast.LENGTH_SHORT).show();
                                 })
                                 .addOnFailureListener(e -> {
