@@ -131,15 +131,18 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     if (task.isSuccessful()) {
                         studentList.clear();
                         for (QueryDocumentSnapshot document : task.getResult()) {
+                            // הצגת תלמידים בלבד (לא מנהלים)
+                            Boolean isAdminDoc = document.getBoolean("isAdmin");
+                            if (isAdminDoc != null && isAdminDoc) continue;
+
                             studentList.add(new Student(
                                     document.getString("fullName"),
                                     document.getString("email"),
-                                    "",
+                                    document.getId(),
                                     document.getString("className"),
-                                    document.getBoolean("isAdmin") != null && document.getBoolean("isAdmin")
+                                    false
                             ));
                         }
-                        Collections.sort(studentList, (s1, s2) -> Boolean.compare(s2.isAdmin(), s1.isAdmin()));
                         studentsAdapter.updateStudents(studentList);
                     }
                 });

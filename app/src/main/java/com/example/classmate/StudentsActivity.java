@@ -1,6 +1,8 @@
 package com.example.classmate;
 
 import android.os.Bundle;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -10,11 +12,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class StudentsActivity extends AppCompatActivity {
@@ -24,6 +26,7 @@ public class StudentsActivity extends AppCompatActivity {
     private FirebaseFirestore db;
     private boolean isAdmin = false;
     private String className = "";
+    private TextView emptyText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +44,7 @@ public class StudentsActivity extends AppCompatActivity {
         }
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        emptyText = findViewById(R.id.empty_students_text);
         db = FirebaseFirestore.getInstance();
 
         RecyclerView recyclerView = findViewById(R.id.students_list_recycler_view);
@@ -49,7 +53,6 @@ public class StudentsActivity extends AppCompatActivity {
         adapter = new StudentsAdapter(studentList, isAdmin, new StudentsAdapter.OnStudentActionListener() {
             @Override
             public void onEditStudent(Student student) {
-                // עריכת תלמיד – ניתן להרחיב בעתיד
                 Toast.makeText(StudentsActivity.this, "עריכה: " + student.getFullName(), Toast.LENGTH_SHORT).show();
             }
 
@@ -65,6 +68,7 @@ public class StudentsActivity extends AppCompatActivity {
 
     private void loadStudents() {
         if (className == null) return;
+
         db.collection("users")
                 .whereEqualTo("className", className)
                 .get()
@@ -72,16 +76,24 @@ public class StudentsActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         studentList.clear();
                         for (QueryDocumentSnapshot doc : task.getResult()) {
+                            // הצגת תלמידים בלבד – מסנן מנהלים
+                            Boolean isAdminDoc = doc.getBoolean("isAdmin");
+                            if (isAdminDoc != null && isAdminDoc) continue;
+
                             studentList.add(new Student(
                                     doc.getString("fullName"),
                                     doc.getString("email"),
-                                    doc.getId(),
+                                    doc.getId(),   // UID = document ID
                                     doc.getString("className"),
-                                    doc.getBoolean("isAdmin") != null && doc.getBoolean("isAdmin")
+                                    false
                             ));
                         }
-                        Collections.sort(studentList, (s1, s2) -> Boolean.compare(s2.isAdmin(), s1.isAdmin()));
                         adapter.updateStudents(studentList);
+                        if (emptyText != null) {
+                            emptyText.setVisibility(studentList.isEmpty() ? View.VISIBLE : View.GONE);
+                        }
+                    } else {
+                        Toast.makeText(this, "שגיאה בטעינת התלמידים", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
@@ -90,18 +102,32 @@ public class StudentsActivity extends AppCompatActivity {
         if (!isAdmin) return;
         new AlertDialog.Builder(this)
                 .setTitle("מחיקת תלמיד")
-                .setMessage("האם למחוק את " + student.getFullName() + " מהכיתה?")
+                .setMessage("האם למחוק את " + student.getFullName() + "?\n\nהתלמיד לא יוכל יותר להתחבר לאפליקציה.")
                 .setPositiveButton("מחק", (dialog, which) -> deleteStudent(student))
                 .setNegativeButton("ביטול", null)
                 .show();
     }
 
-    private void deleteStudent(Student student) {
-        db.collection("users").document(student.getUserId())
+    private void deleteStudent(final Student student) {
+        String uid = student.getUserId();
+
+        // שלב 1: מחיקה מ-Firestore (מונעת התחברות מיידית)
+        db.collection("users").document(uid)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    Toast.makeText(this, "התלמיד הוסר בהצלחה", Toast.LENGTH_SHORT).show();
-                    loadStudents();
+                    // שלב 2: כתיבת רשומת "ממתין למחיקה" ב-Firebase
+                    // בפעם הבאה שהתלמיד ינסה להתחבר, LoginActivity ימחק את חשבון ה-Auth שלו
+                    db.collection("pending_deletions").document(uid)
+                            .set(new java.util.HashMap<String, Object>() {{
+                                put("email", student.getEmail());
+                                put("deletedAt", System.currentTimeMillis());
+                            }})
+                            .addOnCompleteListener(t -> {
+                                Toast.makeText(StudentsActivity.this,
+                                        "התלמיד " + student.getFullName() + " נמחק בהצלחה",
+                                        Toast.LENGTH_SHORT).show();
+                                loadStudents();
+                            });
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(this, "שגיאה במחיקה: " + e.getMessage(), Toast.LENGTH_SHORT).show());

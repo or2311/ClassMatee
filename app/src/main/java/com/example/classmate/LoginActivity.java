@@ -127,6 +127,34 @@ public class LoginActivity extends AppCompatActivity {
                         DocumentSnapshot document = task.getResult().getDocuments().get(0);
                         processUserDocument(document, email, wantsToBeAdmin);
                     } else {
+                        // לא נמצאה רשומה – בדיקה אם החשבון ממתין למחיקה
+                        checkPendingDeletion(email);
+                    }
+                });
+    }
+
+    // בדיקה אם המשתמש נמחק על ידי המנהל
+    private void checkPendingDeletion(String email) {
+        if (mAuth.getCurrentUser() == null) return;
+        String uid = mAuth.getCurrentUser().getUid();
+
+        db.collection("pending_deletions").document(uid).get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null && task.getResult().exists()) {
+                        // החשבון מסומן למחיקה – מוחקים את חשבון ה-Auth
+                        com.google.firebase.auth.FirebaseUser userToDelete = mAuth.getCurrentUser();
+                        if (userToDelete != null) {
+                            // מחיקת רשומת pending_deletions
+                            db.collection("pending_deletions").document(uid).delete();
+                            // מחיקת חשבון Firebase Auth
+                            userToDelete.delete().addOnCompleteListener(deleteTask -> {
+                                Toast.makeText(LoginActivity.this,
+                                        "החשבון שלך הוסר מהמערכת על ידי המנהל",
+                                        Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    } else {
+                        // אין רשומת מחיקה – פשוט לא נמצא
                         mAuth.signOut();
                         Toast.makeText(LoginActivity.this, "לא נמצאו נתוני משתמש ב-Database", Toast.LENGTH_LONG).show();
                     }
