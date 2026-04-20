@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    זהו קובץ העיצוב (Layout) של מסך הבית (Home Screen).
+    הוא המרכז הראשי של האפליקציה וכולל תצוגה של נתונים סטטיסטיים, רשימת תלמידים מקוצרת ולוח שנה קטן.
+    העיצוב משתמש ב-DrawerLayout כדי לאפשר תפריט צידי (המבורגר).
+-->
 <androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -6,50 +11,152 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="#F8F9FA"
     tools:openDrawer="start">
 
+    <!-- התוכן המרכזי של המסך -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
 
+        <!-- סרגל כלים עליון (Toolbar) עם כפתור פתיחת תפריט ושם האפליקציה -->
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            app:elevation="0dp"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
+        <!-- גלילה המכילה את כל התוכן של מסך הבית -->
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
+                android:paddingBottom="32dp">
 
+                <!-- רקע כחול בראש המסך (מתחת לטקסט הברכה) -->
+                <View
+                    android:id="@+id/header_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:background="?attr/colorPrimary"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <!-- טקסט ברכה למשתמש -->
                 <TextView
                     android:id="@+id/welcome_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ברוך הבא!"
+                    android:layout_marginStart="24dp"
+                    android:layout_marginTop="16dp"
+                    android:text="שלום, ברוך הבא!"
+                    android:textColor="@color/white"
                     android:textSize="28sp"
                     android:textStyle="bold"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/students_card"
-                    android:layout_width="0dp"
+                <TextView
+                    android:id="@+id/subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="מה נרצה לעשות היום?"
+                    android:textColor="#E0E0E0"
+                    android:textSize="16sp"
+                    app:layout_constraintStart_toStartOf="@+id/welcome_title"
+                    app:layout_constraintTop_toBottomOf="@+id/welcome_title" />
+
+                <!-- שורת נתונים סטטיסטיים (מבחנים קרובים וממוצע ציונים) -->
+                <LinearLayout
+                    android:id="@+id/stats_layout"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="4dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/welcome_title">
+                    android:layout_marginHorizontal="16dp"
+                    android:orientation="horizontal"
+                    app:layout_constraintTop_toBottomOf="@+id/subtitle">
+
+                    <!-- כרטיס ספירת מבחנים -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="4dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="מבחנים קרובים"
+                                android:textSize="12sp"
+                                android:textColor="#757575"/>
+                            <TextView
+                                android:id="@+id/exams_count_home"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <!-- כרטיס ממוצע ציונים -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        app:cardCornerRadius="12dp"
+                        app:cardElevation="4dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="16dp"
+                            android:gravity="center">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="ממוצע ציונים"
+                                android:textSize="12sp"
+                                android:textColor="#757575"/>
+                            <TextView
+                                android:id="@+id/avg_grade_home"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="--"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="#4CAF50"/>
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <!-- כרטיס ניהול תלמידים - מציג רשימה מקוצרת של תלמידי הכיתה -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/students_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginHorizontal="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:layout_constraintTop_toBottomOf="@+id/stats_layout">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -57,34 +164,47 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <RelativeLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="תלמידי הכיתה"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
+                            android:layout_marginBottom="12dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="תלמידי הכיתה"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:textColor="#333333" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:text="ראה הכל"
+                                android:textColor="?attr/colorPrimary"
+                                android:textStyle="bold" />
+                        </RelativeLayout>
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/students_recycler_view"
                             android:layout_width="match_parent"
-                            android:layout_height="150dp"
-                            android:layout_marginTop="8dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="100dp"
                             tools:listitem="@layout/item_student" />
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- כרטיס לוח שנה קטן המציג אירועים קרובים -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/exams_card"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:layout_marginHorizontal="16dp"
                     android:clickable="true"
                     android:focusable="true"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="4dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
                     app:layout_constraintTop_toBottomOf="@+id/students_card">
 
                     <LinearLayout
@@ -96,15 +216,17 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="תאריכי מבחנים"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
+                            android:layout_marginBottom="12dp"
+                            android:text="לוח מבחנים ואירועים"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#333333" />
 
                         <CalendarView
                             android:id="@+id/mini_calendar_view"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp" />
+                            android:layout_height="300dp"
+                            android:theme="@style/Theme.ClassMate" />
 
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -113,6 +235,7 @@
         </ScrollView>
     </LinearLayout>
 
+    <!-- התפריט הצידי שמופיע בלחיצה על כפתור ה"המבורגר" ב-Toolbar -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"

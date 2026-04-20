@@ -16,6 +16,11 @@
         android:icon="@drawable/ic_student_avatar"
         android:title="תלמידים" />
 
+    <item
+        android:id="@+id/nav_my_grades"
+        android:icon="@drawable/ic_badge"
+        android:title="הציונים שלי" />
+
     <!-- פריטים לניהול – גלויים רק למנהל -->
     <group android:id="@+id/admin_menu_group">
         <item
@@ -27,7 +32,22 @@
             android:id="@+id/nav_add_student"
             android:icon="@drawable/ic_person_outline"
             android:title="הוספת תלמיד" />
+
+        <item
+            android:id="@+id/nav_enter_grades"
+            android:icon="@drawable/ic_badge"
+            android:title="הזנת ציון" />
+
+        <item
+            android:id="@+id/nav_class_grades"
+            android:icon="@drawable/ic_badge"
+            android:title="ציוני כיתה" />
     </group>
+
+    <item
+        android:id="@+id/nav_dark_mode"
+        android:icon="@drawable/ic_lock_outline"
+        android:title="מצב כהה / בהיר" />
 
     <item
         android:id="@+id/nav_logout"

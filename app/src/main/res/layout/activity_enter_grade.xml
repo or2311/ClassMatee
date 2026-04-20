@@ -17,7 +17,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:title="הוספת מבחן / מטלה"
+            app:title="הזנת ציון"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -44,7 +44,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="16dp"
-                    android:text="פרטי האירוע"
+                    android:text="פרטי הציון"
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorPrimary"/>
@@ -54,17 +54,31 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:hint="בחר מקצוע">
+                    android:hint="בחר תלמיד">
 
                     <AutoCompleteTextView
-                        android:id="@+id/subject_auto_complete"
+                        android:id="@+id/student_auto_complete"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="none" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/new_subject_layout"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:hint="בחר מקצוע">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/grade_subject_auto_complete"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/new_subject_layout_grade"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -73,59 +87,10 @@
                     android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/new_subject_edit_text"
+                        android:id="@+id/new_subject_edit_text_grade"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="text" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:hint="סוג האירוע">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/type_auto_complete"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="none" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/pick_date_button"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="60dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="בחר תאריך ושעה"
-                    app:icon="@android:drawable/ic_menu_my_calendar" />
-
-                <TextView
-                    android:id="@+id/selected_date_text"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:gravity="center"
-                    android:text="לא נבחר תאריך"
-                    android:textColor="#757575"
-                    android:textSize="16sp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:hint="חומר למבחן">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/event_material_edit_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="top"
-                        android:inputType="textMultiLine"
-                        android:minLines="3" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -133,27 +98,34 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="24dp"
-                    android:hint="הערות נוספות">
+                    android:hint="ציון (0-100)">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/event_notes_edit_text"
+                        android:id="@+id/score_edit_text"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:gravity="top"
-                        android:inputType="textMultiLine"
-                        android:minLines="2" />
+                        android:inputType="number" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/send_email_switch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:text="שלח הודעת מייל לתלמיד?"
+                    android:checked="true"
+                    app:useMaterialThemeColors="true" />
+
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/save_event_button"
+                    android:id="@+id/save_grade_button"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:text="שמור ופרסם"
+                    android:text="שמור ציון"
                     android:textSize="18sp"
                     app:cornerRadius="8dp" />
 
                 <ProgressBar
-                    android:id="@+id/event_progress"
+                    android:id="@+id/grade_progress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"

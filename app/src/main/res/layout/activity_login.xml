@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 
+    זהו קובץ העיצוב (Layout) של מסך ההתחברות (Login).
+    הוא מגדיר איך המסך ייראה: איפה יהיו תיבות הטקסט, הכפתורים והלוגו.
+-->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -8,6 +12,7 @@
     android:padding="24dp"
     tools:context=".LoginActivity">
 
+    <!-- כרטיס לבן מרכזי שמכיל את כל טופס ההתחברות -->
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -23,6 +28,7 @@
             android:layout_height="wrap_content"
             android:padding="24dp">
 
+            <!-- לוגו האפליקציה בראש המסך -->
             <ImageView
                 android:id="@+id/login_icon"
                 android:layout_width="150dp"
@@ -32,6 +38,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- כותרת "התחברות" -->
             <TextView
                 android:id="@+id/login_title"
                 android:layout_width="wrap_content"
@@ -45,6 +52,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/login_icon" />
 
+            <!-- כותרת לבחירת תפקיד (מורה או תלמיד) -->
             <TextView
                 android:id="@+id/role_selection_title"
                 android:layout_width="wrap_content"
@@ -55,6 +63,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/login_title" />
 
+            <!-- אפשרויות בחירה: תלמיד או מנהל כיתה -->
             <RadioGroup
                 android:id="@+id/role_radio_group"
                 android:layout_width="match_parent"
@@ -78,6 +87,7 @@
                     android:text="@string/role_admin" />
             </RadioGroup>
 
+            <!-- תיבת הזנת אימייל -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/email_layout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -96,6 +106,7 @@
                     android:inputType="textEmailAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- תיבת הזנת סיסמה עם כפתור "עין" להצגת הסיסמה -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/password_layout"
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -115,6 +126,7 @@
                     android:inputType="textPassword" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- כפתור התחברות -->
             <Button
                 android:id="@+id/login_button"
                 android:layout_width="0dp"
@@ -127,6 +139,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/password_layout" />
 
+            <!-- טקסט למעבר למסך יצירת כיתה/חשבון חדש -->
             <TextView
                 android:id="@+id/create_account_button"
                 android:layout_width="wrap_content"
@@ -140,6 +153,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/login_button" />
 
+            <!-- עיגול טעינה (מופיע רק בזמן שהאפליקציה בודקת את הפרטים) -->
             <ProgressBar
                 android:id="@+id/login_progress"
                 android:layout_width="wrap_content"

@@ -3,46 +3,58 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="הוספת תלמיד חדש"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
+        android:textColor="?attr/colorPrimary"/>
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="12dp"
+        android:hint="שם מלא">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/student_fullname_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="שם מלא"
             android:inputType="textPersonName" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/student_email_layout"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="12dp"
+        android:hint="אימייל">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/student_username_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="אימייל"
             android:inputType="textEmailAddress" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/student_password_layout"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:hint="סיסמה">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/student_password_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="סיסמה"
             android:inputType="textPassword" />
     </com.google.android.material.textfield.TextInputLayout>
 

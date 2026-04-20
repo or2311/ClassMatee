@@ -15,7 +15,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ClassMate">
+        android:theme="@style/Theme.ClassMate"
+        android:windowSoftInputMode="adjustResize">
         
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -43,6 +44,8 @@
         <activity android:name=".RegisterActivity" />
         <activity android:name=".SummariesActivity" />
         <activity android:name=".ViewImageActivity" />
+        <activity android:name=".EnterGradeActivity" />
+        <activity android:name=".ViewGradesActivity" />
     </application>
 
 </manifest>

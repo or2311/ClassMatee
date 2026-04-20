@@ -3,11 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:background="#F5F5F5">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="?attr/colorPrimary">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
@@ -15,6 +17,7 @@
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            app:title="הציונים שלי"
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -25,34 +28,46 @@
         android:orientation="vertical"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <TextView
-            android:id="@+id/student_count_text"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/student_selector_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#F5F5F5"
-            android:padding="12dp"
-            android:text="מספר תלמידים: 0"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:gravity="center" />
+            android:layout_margin="16dp"
+            android:visibility="gone"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="12dp"
+                android:hint="בחר תלמיד">
+
+                <AutoCompleteTextView
+                    android:id="@+id/view_student_auto_complete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
-            android:id="@+id/empty_students_text"
+            android:id="@+id/empty_grades_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:padding="32dp"
-            android:text="אין תלמידים בכיתה זו"
+            android:text="אין ציונים להצגה"
             android:textColor="#999999"
             android:textSize="16sp"
             android:visibility="gone" />
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/students_list_recycler_view"
+            android:id="@+id/grades_recycler_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="8dp"
+            android:paddingTop="8dp"
             android:clipToPadding="false" />
 
     </LinearLayout>

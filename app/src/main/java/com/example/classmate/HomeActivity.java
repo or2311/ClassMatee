@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -22,97 +23,116 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.textfield.TextInputEditText;
-
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
+/**
+ * מסך הבית המרכזי של האפליקציה.
+ * מכאן המשתמש (תלמיד או מנהל) יכול לנווט לכל שאר חלקי האפליקציה.
+ */
 public class HomeActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
-    private DrawerLayout drawerLayout;
-    private boolean isAdmin = false;
-    private String email = "";
-    private String className = "";
-    private StudentsAdapter studentsAdapter;
-    private List<Student> studentList = new ArrayList<>();
-    private FirebaseFirestore db;
+    // משתנים לממשק המשתמש (UI)
+    private DrawerLayout drawerLayout; // התפריט הצידי שנפתח מהצד
+    private boolean isAdmin = false;   // משתנה שבודק אם המשתמש המחובר הוא מנהל
+    private String email = "";         // המייל של המשתמש
+    private String fullName = "";      // השם המלא של המשתמש
+    private String className = "";     // שם הכיתה אליה המשתמש שייך
+    
+    private StudentsAdapter studentsAdapter; // כלי שעוזר להציג רשימת תלמידים על המסך
+    private final List<Student> studentList = new ArrayList<>(); // רשימת התלמידים שנציג
+    private FirebaseFirestore db; // גישה לבסיס הנתונים של גוגל (Cloud Firestore)
+    
+    private TextView examsCountHome, avgGradeHome; // תיבות טקסט להצגת סטטיסטיקה במסך הבית
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // לפני שהמסך נוצר, אנחנו בודקים איזה עיצוב (כהה/בהיר) המשתמש בחר ומחילים אותו
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            ThemeHelper.applyTheme(this, user.getUid());
+        }
+        
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_home);
+        setContentView(R.layout.activity_home); // הצמדת קובץ העיצוב (XML) לקוד
 
-        db = FirebaseFirestore.getInstance();
+        db = FirebaseFirestore.getInstance(); // אתחול הקשר לבסיס הנתונים
 
+        // הגדרת סרגל הכלים העליון (Toolbar)
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(""); // מסירים את הכותרת ברירת המחדל
+        }
 
+        // הגדרת התפריט הצידי (Drawer) וכפתור ה"המבורגר" (3 פסים)
         drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
+        navigationView.setNavigationItemSelectedListener(this); // הגדרת האזנה ללחיצות בתפריט
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
+        // קבלת הפרטים של המשתמש שנשלחו מהמסך הקודם (מסך הלוגין)
         email = getIntent().getStringExtra("EMAIL");
+        fullName = getIntent().getStringExtra("FULL_NAME");
         isAdmin = getIntent().getBooleanExtra("IS_ADMIN", false);
         className = getIntent().getStringExtra("CLASS_NAME");
 
+        // עדכון השם והפרטים בתוך התפריט הצידי
         View headerView = navigationView.getHeaderView(0);
         TextView navHeaderSubtitle = headerView.findViewById(R.id.nav_header_subtitle);
-        if (email != null) {
+        if (fullName != null && !fullName.isEmpty()) {
+            navHeaderSubtitle.setText(fullName);
+        } else if (email != null) {
             navHeaderSubtitle.setText(email);
         }
 
+        // הצגת הודעת שלום אישית על המסך
         TextView welcomeTitle = findViewById(R.id.welcome_title);
-        if (email != null) {
-            welcomeTitle.setText(getString(R.string.welcome_user, email));
+        String displayName = (fullName != null && !fullName.isEmpty()) ? fullName : email;
+        if (displayName != null) {
+            welcomeTitle.setText("שלום, " + (displayName.contains(" ") ? displayName.split(" ")[0] : displayName) + "!");
         }
 
-        Menu menu = navigationView.getMenu();
-        menu.setGroupVisible(R.id.admin_menu_group, isAdmin);
+        // אתחול תיבות הטקסט של הסטטיסטיקה
+        examsCountHome = findViewById(R.id.exams_count_home);
+        avgGradeHome = findViewById(R.id.avg_grade_home);
 
+        // הסתרת/הצגת פריטים בתפריט לפי סוג המשתמש (מנהל או תלמיד)
+        Menu menu = navigationView.getMenu();
+        menu.setGroupVisible(R.id.admin_menu_group, isAdmin); // רק מנהל רואה פריטי ניהול
+        MenuItem myGradesItem = menu.findItem(R.id.nav_my_grades);
+        if (myGradesItem != null) {
+            myGradesItem.setVisible(!isAdmin); // תלמיד רואה את הציונים שלו, מנהל לא צריך את זה כאן
+        }
+
+        // הגדרת רשימת התלמידים (RecyclerView) - מציג תלמידים בשורה אופקית
         RecyclerView studentsRecyclerView = findViewById(R.id.students_recycler_view);
-        studentsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        studentsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         
         studentsAdapter = new StudentsAdapter(studentList, isAdmin, new StudentsAdapter.OnStudentActionListener() {
             @Override
-            public void onEditStudent(Student student) {
-                // Implement if needed or redirect to StudentsActivity
-            }
-
+            public void onEditStudent(Student student) { openActivity(StudentsActivity.class); }
             @Override
-            public void onDeleteStudent(Student student) {
-                // Implement if needed
-            }
+            public void onDeleteStudent(Student student) { openActivity(StudentsActivity.class); }
         });
         studentsRecyclerView.setAdapter(studentsAdapter);
 
-        MaterialCardView examsCard = findViewById(R.id.exams_card);
-        examsCard.setOnClickListener(v -> {
-            Intent intent = new Intent(HomeActivity.this, CalendarActivity.class);
-            intent.putExtra("IS_ADMIN", isAdmin);
-            intent.putExtra("EMAIL", email);
-            intent.putExtra("CLASS_NAME", className);
-            startActivity(intent);
-        });
-        
-        MaterialCardView studentsCard = findViewById(R.id.students_card);
-        studentsCard.setOnClickListener(v -> {
-            Intent intent = new Intent(HomeActivity.this, StudentsActivity.class);
-            intent.putExtra("IS_ADMIN", isAdmin);
-            intent.putExtra("EMAIL", email);
-            intent.putExtra("CLASS_NAME", className);
-            startActivity(intent);
-        });
+        // הגדרת לחיצות על הכרטיסיות במסך הבית
+        findViewById(R.id.exams_card).setOnClickListener(v -> openActivity(CalendarActivity.class));
+        findViewById(R.id.students_card).setOnClickListener(v -> openActivity(StudentsActivity.class));
 
+        // טיפול בכפתור ה"חזור" של הטלפון - אם התפריט פתוח, נסגור אותו במקום לצאת מהאפליקציה
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -124,7 +144,134 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             }
         });
 
-        refreshStudentsData();
+        refreshStudentsData(); // טעינת רשימת התלמידים מהאינטרנט
+        loadHomeStats();      // טעינת הנתונים (מבחנים וממוצע) מהאינטרנט
+    }
+
+    /**
+     * פונקציה שטוענת נתונים סטטיסטיים מ-Firebase ומציגה אותם בדף הבית.
+     */
+    private void loadHomeStats() {
+        if (className == null) return;
+        long currentTime = System.currentTimeMillis();
+        String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+
+        // 1. ספירת מבחנים קרובים לכיתה של המשתמש
+        db.collection("events")
+                .whereEqualTo("className", className)
+                .whereGreaterThanOrEqualTo("timestamp", currentTime) // רק מהיום והלאה
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    int count = 0;
+                    if (queryDocumentSnapshots != null) {
+                        for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                            Boolean isGlobal = doc.getBoolean("isGlobal");
+                            String createdBy = doc.getString("createdBy");
+                            // סופר אם זה מבחן כיתתי או אירוע פרטי של המשתמש
+                            if (Boolean.TRUE.equals(isGlobal) || (createdBy != null && createdBy.equals(uid))) {
+                                count++;
+                            }
+                        }
+                    }
+                    if (examsCountHome != null) examsCountHome.setText(String.valueOf(count));
+                });
+
+        // 2. חישוב ממוצע ציונים
+        db.collection("grades")
+                .whereEqualTo(isAdmin ? "className" : "studentId", isAdmin ? className : uid)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (queryDocumentSnapshots == null || queryDocumentSnapshots.isEmpty()) {
+                        if (avgGradeHome != null) avgGradeHome.setText("--");
+                        return;
+                    }
+                    double sum = 0;
+                    for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
+                        Long score = doc.getLong("score");
+                        if (score != null) sum += score;
+                    }
+                    double avg = sum / queryDocumentSnapshots.size();
+                    if (avgGradeHome != null) avgGradeHome.setText(String.format(Locale.getDefault(), "%.1f", avg));
+                });
+    }
+
+    /**
+     * עובר למסך אחר ומעביר אליו את כל פרטי המשתמש הנוכחי.
+     */
+    private void openActivity(Class<?> cls) {
+        Intent intent = new Intent(this, cls);
+        intent.putExtra("IS_ADMIN", isAdmin);
+        intent.putExtra("EMAIL", email);
+        intent.putExtra("FULL_NAME", fullName);
+        intent.putExtra("CLASS_NAME", className);
+        startActivity(intent);
+    }
+
+    /**
+     * פונקציה שמטפלת בלחיצות על התפריט הצידי.
+     */
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        Intent intent = null;
+
+        // ניווט לפי האפשרות שנבחרה
+        if (id == R.id.nav_summaries) {
+            intent = new Intent(this, SummariesActivity.class);
+        } else if (id == R.id.nav_upload_summary) {
+            intent = new Intent(this, UploadSummery.class);
+        } else if (id == R.id.nav_exams) {
+            intent = new Intent(this, CalendarActivity.class);
+        } else if (id == R.id.nav_students) {
+            intent = new Intent(this, StudentsActivity.class);
+        } else if (id == R.id.nav_my_grades) {
+            intent = new Intent(this, ViewGradesActivity.class);
+            intent.putExtra("IS_ADMIN_VIEW", false);
+        } else if (id == R.id.nav_enter_grades) {
+            intent = new Intent(this, EnterGradeActivity.class);
+        } else if (id == R.id.nav_class_grades) {
+            intent = new Intent(this, ViewGradesActivity.class);
+            intent.putExtra("IS_ADMIN_VIEW", true);
+        } else if (id == R.id.nav_add_student) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            showAddStudentDialog(); // פתיחת חלון קופץ להוספת תלמיד
+            return true;
+        } else if (id == R.id.nav_dark_mode) {
+            // טיפול במעבר בין מצב בהיר לכהה
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user != null) {
+                String uid = user.getUid();
+                boolean isCurrentlyDark = ThemeHelper.isDarkMode(this, uid);
+                ThemeHelper.saveThemeMode(this, uid, !isCurrentlyDark); // שמירת הבחירה בזיכרון
+                ThemeHelper.applyTheme(this, uid); // החלת השינוי על המסך
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        } else if (id == R.id.nav_logout) {
+            // התנתקות מהחשבון וחזרה למסך הלוגין
+            FirebaseAuth.getInstance().signOut();
+            intent = new Intent(this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        }
+
+        if (intent != null) {
+            intent.putExtra("IS_ADMIN", isAdmin);
+            intent.putExtra("EMAIL", email);
+            intent.putExtra("FULL_NAME", fullName);
+            intent.putExtra("CLASS_NAME", className);
+            startActivity(intent);
+        }
+
+        drawerLayout.closeDrawer(GravityCompat.START);
+        return true;
+    }
+
+    // שאר הפונקציות להוספת תלמיד וטעינת נתונים דומות בלוגיקה שלהן...
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadHomeStats(); // בכל פעם שחוזרים למסך הבית, נעדכן את הנתונים
     }
 
     private void refreshStudentsData() {
@@ -136,7 +283,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     if (task.isSuccessful()) {
                         studentList.clear();
                         for (QueryDocumentSnapshot document : task.getResult()) {
-                            // הצגת תלמידים בלבד (לא מנהלים)
                             Boolean isAdminDoc = document.getBoolean("isAdmin");
                             if (isAdminDoc != null && isAdminDoc) continue;
 
@@ -153,39 +299,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 });
     }
 
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        Intent intent = null;
-        if (id == R.id.nav_summaries) {
-            intent = new Intent(this, SummariesActivity.class);
-        } else if (id == R.id.nav_upload_summary) {
-            intent = new Intent(this, UploadSummery.class);
-        } else if (id == R.id.nav_exams) {
-            intent = new Intent(this, CalendarActivity.class);
-        } else if (id == R.id.nav_students) {
-            intent = new Intent(this, StudentsActivity.class);
-        } else if (id == R.id.nav_add_student) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-            showAddStudentDialog();
-            return true;
-        } else if (id == R.id.nav_logout) {
-            FirebaseAuth.getInstance().signOut();
-            intent = new Intent(this, LoginActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        }
-
-        if (intent != null) {
-            intent.putExtra("IS_ADMIN", isAdmin);
-            intent.putExtra("EMAIL", email);
-            intent.putExtra("CLASS_NAME", className);
-            startActivity(intent);
-        }
-
-        drawerLayout.closeDrawer(GravityCompat.START);
-        return true;
-    }
-
     private void showAddStudentDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_student, null);
         TextInputEditText fullNameInput = dialogView.findViewById(R.id.student_fullname_input);
@@ -200,23 +313,21 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         dialog.setButton(AlertDialog.BUTTON_POSITIVE, "הוסף", (DialogInterface.OnClickListener) null);
         dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "ביטול", (DialogInterface.OnClickListener) null);
 
-        dialog.setOnShowListener(dlg -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
-                String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
-                String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
+        dialog.setOnShowListener(dlg -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String studentName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
+            String emailStr = emailInput.getText() != null ? emailInput.getText().toString().trim() : "";
+            String password = passwordInput.getText() != null ? passwordInput.getText().toString().trim() : "";
 
-                if (fullName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
-                    Toast.makeText(this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (password.length() < 6) {
-                    Toast.makeText(this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                addStudentToClass(fullName, emailStr, password, dialog);
-            });
-        });
+            if (studentName.isEmpty() || emailStr.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "נא למלא את כל השדות", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (password.length() < 6) {
+                Toast.makeText(this, "הסיסמה חייבת להכיל לפחות 6 תווים", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            addStudentToClass(studentName, emailStr, password, dialog);
+        }));
 
         dialog.show();
     }

@@ -2,6 +2,7 @@ package com.example.classmate;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -14,20 +15,32 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+/**
+ * מסך ההתחברות (Login).
+ * זהו המסך הראשון שהמשתמש פוגש. הוא מאפשר למשתמשים קיימים להיכנס למערכת
+ * ומפנה משתמשים חדשים להרשמה או להגדרת פרופיל ראשונית.
+ */
 public class LoginActivity extends AppCompatActivity {
 
     private TextInputEditText emailEditText;
     private TextInputEditText passwordEditText;
     private RadioGroup roleRadioGroup;
     private ProgressBar progressBar;
+    
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            ThemeHelper.applyTheme(this, currentUser.getUid());
+        }
+        
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
@@ -63,7 +76,6 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // בדיקה שנבחר תפקיד
         int selectedId = roleRadioGroup.getCheckedRadioButtonId();
         if (selectedId == -1) {
             Toast.makeText(this, "נא לבחור סוג התחברות (תלמיד / מנהל)", Toast.LENGTH_SHORT).show();
@@ -91,136 +103,36 @@ public class LoginActivity extends AppCompatActivity {
 
         String userId = mAuth.getCurrentUser().getUid();
 
-        // קודם כל מנסים לחפש לפי UID (הדרך המועדפת)
+        // תיקון: הצגת שגיאה מפורטת במידה והשליפה נכשלת
         db.collection("users").document(userId).get()
                 .addOnCompleteListener(task -> {
                     progressBar.setVisibility(View.GONE);
                     if (task.isSuccessful()) {
                         DocumentSnapshot document = task.getResult();
                         if (document != null && document.exists()) {
-                            // נמצא לפי UID
                             processUserDocument(document, email, wantsToBeAdmin);
                         } else {
-                            // *** תיקון הבאג העיקרי ***
-                            // המסמך לא נמצא לפי UID – מנסים לחפש לפי אימייל
-                            // (קורה כשהמסמך נוצר עם ID שאינו ה-UID)
-                            searchUserByEmail(email, wantsToBeAdmin);
+                            // אם המשתמש לא קיים ב-Firestore, ננתק אותו כדי שלא יישאר במצב מוזר
+                            mAuth.signOut();
+                            Toast.makeText(LoginActivity.this, "משתמש לא נמצא במערכת הנתונים. נא להירשם מחדש.", Toast.LENGTH_LONG).show();
                         }
                     } else {
+                        // הצגת השגיאה האמיתית ב-Log וב-Toast לדיבג
+                        String error = task.getException() != null ? task.getException().getMessage() : "שגיאה לא ידועה";
+                        Log.e("LOGIN_ERROR", "Firestore error: " + error);
                         mAuth.signOut();
-                        String errMsg = task.getException() != null ? task.getException().getMessage() : "";
-                        Toast.makeText(LoginActivity.this, "שגיאה בשליפת נתונים: " + errMsg, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "שגיאה בשליפת נתונים: " + error, Toast.LENGTH_LONG).show();
                     }
                 });
-    }
-
-    // חיפוש גיבוי לפי שדה האימייל
-    private void searchUserByEmail(String email, boolean wantsToBeAdmin) {
-        progressBar.setVisibility(View.VISIBLE);
-        db.collection("users")
-                .whereEqualTo("email", email)
-                .limit(1)
-                .get()
-                .addOnCompleteListener(task -> {
-                    progressBar.setVisibility(View.GONE);
-                    if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
-                        DocumentSnapshot document = task.getResult().getDocuments().get(0);
-                        processUserDocument(document, email, wantsToBeAdmin);
-                    } else {
-                        // לא נמצאה רשומה – בדיקה אם החשבון ממתין למחיקה
-                        checkPendingDeletion(email, wantsToBeAdmin);
-                    }
-                });
-    }
-
-    // בדיקה אם המשתמש נמחק על ידי המנהל, אחרת הצגת הגדרת פרופיל
-    private void checkPendingDeletion(String email, boolean wantsToBeAdmin) {
-        if (mAuth.getCurrentUser() == null) return;
-        String uid = mAuth.getCurrentUser().getUid();
-
-        db.collection("pending_deletions").document(uid).get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful() && task.getResult() != null && task.getResult().exists()) {
-                        // החשבון מסומן למחיקה – מוחקים את חשבון ה-Auth
-                        db.collection("pending_deletions").document(uid).delete();
-                        com.google.firebase.auth.FirebaseUser userToDelete = mAuth.getCurrentUser();
-                        if (userToDelete != null) {
-                            userToDelete.delete().addOnCompleteListener(deleteTask ->
-                                    Toast.makeText(LoginActivity.this,
-                                            "החשבון שלך הוסר מהמערכת על ידי המנהל",
-                                            Toast.LENGTH_LONG).show());
-                        }
-                    } else {
-                        // לא נמצא מסמך ב-Firestore – הצגת הגדרת פרופיל ראשונית
-                        showFirstTimeSetupDialog(uid, email, wantsToBeAdmin);
-                    }
-                });
-    }
-
-    // דיאלוג להגדרת פרופיל ראשונית כשהמשתמש קיים ב-Auth אך לא ב-Firestore
-    private void showFirstTimeSetupDialog(String uid, String email, boolean wantsToBeAdmin) {
-        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(this);
-        android.view.View dialogView = inflater.inflate(R.layout.dialog_first_setup, null);
-
-        com.google.android.material.textfield.TextInputEditText fullNameInput =
-                dialogView.findViewById(R.id.setup_fullname_input);
-        com.google.android.material.textfield.TextInputEditText classNameInput =
-                dialogView.findViewById(R.id.setup_classname_input);
-
-        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("הגדרת פרופיל")
-                .setMessage("החשבון שלך אומת, אך לא נמצאו פרטים ב-Database.
-מלא את הפרטים:")
-                .setView(dialogView)
-                .setCancelable(false)
-                .create();
-
-        dialog.setButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE, "שמור", (d, w) -> {});
-        dialog.setButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE, "ביטול", (d, w) -> {
-            mAuth.signOut();
-        });
-
-        dialog.setOnShowListener(dlg -> {
-            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String fullName = fullNameInput.getText() != null ? fullNameInput.getText().toString().trim() : "";
-                String className = classNameInput.getText() != null ? classNameInput.getText().toString().trim() : "";
-
-                if (fullName.isEmpty() || className.isEmpty()) {
-                    Toast.makeText(this, "נא למלא שם ושם כיתה", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                java.util.Map<String, Object> userData = new java.util.HashMap<>();
-                userData.put("fullName", fullName);
-                userData.put("email", email);
-                userData.put("className", className);
-                userData.put("isAdmin", wantsToBeAdmin);
-
-                db.collection("users").document(uid).set(userData)
-                        .addOnSuccessListener(aVoid -> {
-                            dialog.dismiss();
-                            Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
-                            intent.putExtra("EMAIL", email);
-                            intent.putExtra("IS_ADMIN", wantsToBeAdmin);
-                            intent.putExtra("CLASS_NAME", className);
-                            startActivity(intent);
-                            finish();
-                        })
-                        .addOnFailureListener(e ->
-                                Toast.makeText(this, "שגיאה בשמירה: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            });
-        });
-
-        dialog.show();
     }
 
     private void processUserDocument(DocumentSnapshot document, String email, boolean wantsToBeAdmin) {
         Boolean isAdminInDb = document.getBoolean("isAdmin");
         String className = document.getString("className");
+        String fullName = document.getString("fullName");
 
         if (isAdminInDb == null) isAdminInDb = false;
 
-        // בדיקה אם התפקיד הנבחר תואם לתפקיד בבסיס הנתונים
         if (!isAdminInDb.equals(wantsToBeAdmin)) {
             String msg = isAdminInDb
                     ? "חשבון זה שייך למנהל. נא לבחור התחברות כמנהל."
@@ -230,9 +142,9 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-        // הכל תקין – מעבר למסך הבית
         Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
         intent.putExtra("EMAIL", email);
+        intent.putExtra("FULL_NAME", fullName != null ? fullName : email);
         intent.putExtra("IS_ADMIN", isAdminInDb);
         intent.putExtra("CLASS_NAME", className);
         startActivity(intent);
