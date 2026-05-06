@@ -15,7 +15,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -23,7 +22,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -40,83 +38,110 @@ import java.util.Locale;
  */
 public class HomeActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
-    // משתנים לממשק המשתמש (UI)
-    private DrawerLayout drawerLayout; // התפריט הצידי שנפתח מהצד
-    private boolean isAdmin = false;   // משתנה שבודק אם המשתמש המחובר הוא מנהל
-    private String email = "";         // המייל של המשתמש
-    private String fullName = "";      // השם המלא של המשתמש
-    private String className = "";     // שם הכיתה אליה המשתמש שייך
+    private DrawerLayout drawerLayout;
+    private boolean isAdmin = false;
+    private String email = "";
+    private String fullName = "";
+    private String className = "";
     
-    private StudentsAdapter studentsAdapter; // כלי שעוזר להציג רשימת תלמידים על המסך
-    private final List<Student> studentList = new ArrayList<>(); // רשימת התלמידים שנציג
-    private FirebaseFirestore db; // גישה לבסיס הנתונים של גוגל (Cloud Firestore)
+    private StudentsAdapter studentsAdapter;
+    private final List<Student> studentList = new ArrayList<>();
+    private FirebaseFirestore db;
     
-    private TextView examsCountHome, avgGradeHome; // תיבות טקסט להצגת סטטיסטיקה במסך הבית
+    private TextView examsCountHome, avgGradeHome;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // לפני שהמסך נוצר, אנחנו בודקים איזה עיצוב (כהה/בהיר) המשתמש בחר ומחילים אותו
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             ThemeHelper.applyTheme(this, user.getUid());
         }
         
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_home); // הצמדת קובץ העיצוב (XML) לקוד
+        setContentView(R.layout.activity_home);
 
-        db = FirebaseFirestore.getInstance(); // אתחול הקשר לבסיס הנתונים
+        db = FirebaseFirestore.getInstance();
 
-        // הגדרת סרגל הכלים העליון (Toolbar)
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(""); // מסירים את הכותרת ברירת המחדל
+            getSupportActionBar().setTitle("");
         }
 
-        // הגדרת התפריט הצידי (Drawer) וכפתור ה"המבורגר" (3 פסים)
         drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this); // הגדרת האזנה ללחיצות בתפריט
+        navigationView.setNavigationItemSelectedListener(this);
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        // קבלת הפרטים של המשתמש שנשלחו מהמסך הקודם (מסך הלוגין)
+        // קבלת נתונים מהאינטנט
         email = getIntent().getStringExtra("EMAIL");
         fullName = getIntent().getStringExtra("FULL_NAME");
         isAdmin = getIntent().getBooleanExtra("IS_ADMIN", false);
         className = getIntent().getStringExtra("CLASS_NAME");
 
-        // עדכון השם והפרטים בתוך התפריט הצידי
+        // תיקון קריטי: אם שם הכיתה חסר (קורה לעיתים במנהל חדש), נשלוף אותו מהדאטהבייס
+        if (className == null || className.isEmpty()) {
+            fetchUserDataAndRefresh();
+        } else {
+            setupUI(navigationView);
+            refreshStudentsData();
+            loadHomeStats();
+        }
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                } else {
+                    finish();
+                }
+            }
+        });
+    }
+
+    /**
+     * שליפת נתוני המשתמש מה-Firestore במידה והם לא הגיעו מהמסך הקודם.
+     */
+    private void fetchUserDataAndRefresh() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        db.collection("users").document(user.getUid()).get()
+                .addOnSuccessListener(document -> {
+                    if (document.exists()) {
+                        className = document.getString("className");
+                        fullName = document.getString("fullName");
+                        isAdmin = Boolean.TRUE.equals(document.getBoolean("isAdmin"));
+                        email = document.getString("email");
+
+                        setupUI((NavigationView) findViewById(R.id.nav_view));
+                        refreshStudentsData();
+                        loadHomeStats();
+                    }
+                })
+                .addOnFailureListener(e -> Toast.makeText(this, "שגיאה בטעינת נתוני כיתה", Toast.LENGTH_SHORT).show());
+    }
+
+    private void setupUI(NavigationView navigationView) {
         View headerView = navigationView.getHeaderView(0);
         TextView navHeaderSubtitle = headerView.findViewById(R.id.nav_header_subtitle);
-        if (fullName != null && !fullName.isEmpty()) {
-            navHeaderSubtitle.setText(fullName);
-        } else if (email != null) {
-            navHeaderSubtitle.setText(email);
-        }
+        navHeaderSubtitle.setText(fullName != null ? fullName : email);
 
-        // הצגת הודעת שלום אישית על המסך
         TextView welcomeTitle = findViewById(R.id.welcome_title);
-        String displayName = (fullName != null && !fullName.isEmpty()) ? fullName : email;
-        if (displayName != null) {
-            welcomeTitle.setText("שלום, " + (displayName.contains(" ") ? displayName.split(" ")[0] : displayName) + "!");
-        }
+        welcomeTitle.setText("שלום, " + (fullName != null ? fullName.split(" ")[0] : "אורח") + "!");
 
-        // אתחול תיבות הטקסט של הסטטיסטיקה
         examsCountHome = findViewById(R.id.exams_count_home);
         avgGradeHome = findViewById(R.id.avg_grade_home);
 
-        // הסתרת/הצגת פריטים בתפריט לפי סוג המשתמש (מנהל או תלמיד)
         Menu menu = navigationView.getMenu();
-        menu.setGroupVisible(R.id.admin_menu_group, isAdmin); // רק מנהל רואה פריטי ניהול
+        menu.setGroupVisible(R.id.admin_menu_group, isAdmin);
         MenuItem myGradesItem = menu.findItem(R.id.nav_my_grades);
-        if (myGradesItem != null) {
-            myGradesItem.setVisible(!isAdmin); // תלמיד רואה את הציונים שלו, מנהל לא צריך את זה כאן
-        }
+        if (myGradesItem != null) myGradesItem.setVisible(!isAdmin);
 
-        // הגדרת רשימת התלמידים (RecyclerView) - מציג תלמידים בשורה אופקית
         RecyclerView studentsRecyclerView = findViewById(R.id.students_recycler_view);
         studentsRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         
@@ -128,38 +153,18 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         });
         studentsRecyclerView.setAdapter(studentsAdapter);
 
-        // הגדרת לחיצות על הכרטיסיות במסך הבית
         findViewById(R.id.exams_card).setOnClickListener(v -> openActivity(CalendarActivity.class));
         findViewById(R.id.students_card).setOnClickListener(v -> openActivity(StudentsActivity.class));
-
-        // טיפול בכפתור ה"חזור" של הטלפון - אם התפריט פתוח, נסגור אותו במקום לצאת מהאפליקציה
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                    drawerLayout.closeDrawer(GravityCompat.START);
-                } else {
-                    finish();
-                }
-            }
-        });
-
-        refreshStudentsData(); // טעינת רשימת התלמידים מהאינטרנט
-        loadHomeStats();      // טעינת הנתונים (מבחנים וממוצע) מהאינטרנט
     }
 
-    /**
-     * פונקציה שטוענת נתונים סטטיסטיים מ-Firebase ומציגה אותם בדף הבית.
-     */
     private void loadHomeStats() {
-        if (className == null) return;
+        if (className == null || className.isEmpty()) return;
         long currentTime = System.currentTimeMillis();
         String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
 
-        // 1. ספירת מבחנים קרובים לכיתה של המשתמש
         db.collection("events")
                 .whereEqualTo("className", className)
-                .whereGreaterThanOrEqualTo("timestamp", currentTime) // רק מהיום והלאה
+                .whereGreaterThanOrEqualTo("timestamp", currentTime)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     int count = 0;
@@ -167,7 +172,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                         for (QueryDocumentSnapshot doc : queryDocumentSnapshots) {
                             Boolean isGlobal = doc.getBoolean("isGlobal");
                             String createdBy = doc.getString("createdBy");
-                            // סופר אם זה מבחן כיתתי או אירוע פרטי של המשתמש
                             if (Boolean.TRUE.equals(isGlobal) || (createdBy != null && createdBy.equals(uid))) {
                                 count++;
                             }
@@ -176,7 +180,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     if (examsCountHome != null) examsCountHome.setText(String.valueOf(count));
                 });
 
-        // 2. חישוב ממוצע ציונים
         db.collection("grades")
                 .whereEqualTo(isAdmin ? "className" : "studentId", isAdmin ? className : uid)
                 .get()
@@ -195,9 +198,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 });
     }
 
-    /**
-     * עובר למסך אחר ומעביר אליו את כל פרטי המשתמש הנוכחי.
-     */
     private void openActivity(Class<?> cls) {
         Intent intent = new Intent(this, cls);
         intent.putExtra("IS_ADMIN", isAdmin);
@@ -207,15 +207,11 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         startActivity(intent);
     }
 
-    /**
-     * פונקציה שמטפלת בלחיצות על התפריט הצידי.
-     */
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         Intent intent = null;
 
-        // ניווט לפי האפשרות שנבחרה
         if (id == R.id.nav_summaries) {
             intent = new Intent(this, SummariesActivity.class);
         } else if (id == R.id.nav_upload_summary) {
@@ -234,21 +230,19 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             intent.putExtra("IS_ADMIN_VIEW", true);
         } else if (id == R.id.nav_add_student) {
             drawerLayout.closeDrawer(GravityCompat.START);
-            showAddStudentDialog(); // פתיחת חלון קופץ להוספת תלמיד
+            showAddStudentDialog();
             return true;
         } else if (id == R.id.nav_dark_mode) {
-            // טיפול במעבר בין מצב בהיר לכהה
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
             if (user != null) {
                 String uid = user.getUid();
                 boolean isCurrentlyDark = ThemeHelper.isDarkMode(this, uid);
-                ThemeHelper.saveThemeMode(this, uid, !isCurrentlyDark); // שמירת הבחירה בזיכרון
-                ThemeHelper.applyTheme(this, uid); // החלת השינוי על המסך
+                ThemeHelper.saveThemeMode(this, uid, !isCurrentlyDark);
+                ThemeHelper.applyTheme(this, uid);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
             return true;
         } else if (id == R.id.nav_logout) {
-            // התנתקות מהחשבון וחזרה למסך הלוגין
             FirebaseAuth.getInstance().signOut();
             intent = new Intent(this, LoginActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -266,16 +260,15 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-    // שאר הפונקציות להוספת תלמיד וטעינת נתונים דומות בלוגיקה שלהן...
-    
     @Override
     protected void onResume() {
         super.onResume();
-        loadHomeStats(); // בכל פעם שחוזרים למסך הבית, נעדכן את הנתונים
+        loadHomeStats();
+        refreshStudentsData();
     }
 
     private void refreshStudentsData() {
-        if (className == null) return;
+        if (className == null || className.isEmpty()) return;
         db.collection("users")
                 .whereEqualTo("className", className)
                 .get()
@@ -294,7 +287,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                                     false
                             ));
                         }
-                        studentsAdapter.updateStudents(studentList);
+                        if (studentsAdapter != null) {
+                            studentsAdapter.updateStudents(studentList);
+                        }
                     }
                 });
     }
